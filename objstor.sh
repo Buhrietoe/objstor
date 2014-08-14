@@ -1,7 +1,7 @@
 #!/bin/bash
 # Written by: Jason Gardner
 # https://github.com/Buhrietoe/objstor
-# License: GPL-3
+# License: MIT
 # Bash Command line utility for using swift object storage
 # This was written with portability/minimal dependancies in mind and to keep it as simple as possible
 
