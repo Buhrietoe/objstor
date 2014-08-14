@@ -3,7 +3,7 @@
 # https://github.com/Buhrietoe/objstor
 # License: MIT
 # Bash Command line utility for using swift object storage
-# This was written with portability/minimal dependancies in mind and to keep it as simple as possible
+# This was written with portability/minimal dependencies in mind and to keep it as simple as possible
 
 # Print usage information
 usage() {
@@ -65,9 +65,9 @@ printError() {
   echo $1 >&2
 }
 
-# Check dependancies
+# Check dependencies
 # Check to ensure that our basic utilities are present. If not then error and quit.
-checkDependancies() {
+checkDependencies() {
   CMDCURL=$(which curl 2>/dev/null)
   if [ -z "$CMDCURL" ]; then
     printError "curl binary not found in path. It is required."
@@ -355,7 +355,7 @@ actionSave() {
 
 # This is the main control flow function
 main() {
-  checkDependancies
+  checkDependencies
 
   # Perform the action specified
   case $ARGACTION in
