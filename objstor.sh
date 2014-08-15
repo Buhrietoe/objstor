@@ -92,19 +92,19 @@ checkDependencies() {
     exit 1
   fi
 
-  CMDFILE=$(which grep 2>/dev/null)
+  CMDGREP=$(which grep 2>/dev/null)
   if [ -z "$CMDFILE" ]; then
     printError "grep binary not found in path. It is required."
     exit 1
   fi
 
-  CMDFILE=$(which awk 2>/dev/null)
+  CMDAWK=$(which awk 2>/dev/null)
   if [ -z "$CMDFILE" ]; then
     printError "awk binary not found in path. It is required."
     exit 1
   fi
 
-  CMDFILE=$(which tr 2>/dev/null)
+  CMDTR=$(which tr 2>/dev/null)
   if [ -z "$CMDFILE" ]; then
     printError "tr binary not found in path. It is required."
     exit 1
@@ -154,8 +154,8 @@ doAuth() {
     printError "Authentication Failed!" && echo "$AUTHRESULT" && exit 1
   fi
 
-  OSURL=$(echo "$AUTHRESULT" | grep 'X-Storage-Url' | tr -d '\r' | awk '{print $2}')
-  OSTOKEN=$(echo "$AUTHRESULT" | grep 'X-Storage-Token' | tr -d '\r' | awk '{print $2}') 
+  OSURL=$(echo "$AUTHRESULT" | $CMDGREP 'X-Storage-Url' | $CMDTR -d '\r' | $CMDAWK '{print $2}')
+  OSTOKEN=$(echo "$AUTHRESULT" | $CMDGREP 'X-Storage-Token' | $CMDTR -d '\r' | $CMDAWK '{print $2}') 
 }
 
 # Check if an object exists
@@ -175,7 +175,7 @@ checkExist() {
 # Parameter: response header blob (getInfo)
 # Returns: HTTP Code
 parseCode() {
-  local RETURNCODE=$(echo "$1" | grep 'HTTP' | tr -d '\r' | awk '{print $2}')
+  local RETURNCODE=$(echo "$1" | $CMDGREP 'HTTP' | $CMDTR -d '\r' | $CMDAWK '{print $2}')
   echo "$RETURNCODE"
 }
 
@@ -183,7 +183,7 @@ parseCode() {
 # Parameter: response header blob (getInfo)
 # Return: md5sum of object
 parseMd5() {
-  local MD5SUM=$(echo "$1" | grep 'Etag' | tr -d '\r' | awk '{print $2}')
+  local MD5SUM=$(echo "$1" | $CMDGREP 'Etag' | $CMDTR -d '\r' | $CMDAWK '{print $2}')
   echo "$MD5SUM"
 }
 
@@ -193,7 +193,7 @@ parseMd5() {
 matchMd5() {
   local OSOBJECTINFO=$(getInfo "$2")
   local OSMD5SUM=$(parseMd5 "$OSOBJECTINFO")
-  local LOCALMD5SUM=$(md5sum $1 | tr -d '\r' | awk '{print $1}')
+  local LOCALMD5SUM=$($CMDMD5SUM $1 | $CMDTR -d '\r' | $CMDAWK '{print $1}')
   if [ "$OSMD5SUM" == "$LOCALMD5SUM" ]; then
     echo yes
   else
@@ -206,7 +206,7 @@ matchMd5() {
 # Returns: Response headers with information about account
 getStats() {
   local ACCTSTATS=$($CMDCURL -s -H "X-Auth-Token: $OSTOKEN" $OSURL -I)
-  echo "$ACCTSTATS" | grep 'X-Account' | tr -d '\r'
+  echo "$ACCTSTATS" | $CMDGREP 'X-Account' | $CMDTR -d '\r'
 }
 
 # Check and display a listing of the specified path.
