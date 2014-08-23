@@ -226,13 +226,13 @@ getInfo() {
 # Downloads an object from object storage to disk
 # Parameters: path to object, local storage path
 getObject() {
-  $CMDCURL -s -H "X-Auth-Token: $OSTOKEN" $OSURL"$1" -o "$2" -w '%{speed_download}'
+  $CMDCURL -H "X-Auth-Token: $OSTOKEN" $OSURL"$1" -o "$2"
 }
 
 # Upload an file
 # Parameters: object storage container/path/object, location of local file
 putObject() {
-  $CMDCURL -s -H "X-Auth-Token: $OSTOKEN" $OSURL"$1" -T "$2" -w '%{speed_upload}' -X PUT
+  $CMDCURL -H "X-Auth-Token: $OSTOKEN" $OSURL"$1" -T "$2" -X PUT -o /dev/null
 }
 
 # Create a directory object
@@ -286,8 +286,7 @@ actionStats() {
 # Main function for the get action
 actionGet() {
   checkCredentials
-  local OSSPEED=$(getObject "${ARGPATHS[0]}" "${ARGPATHS[1]}")
-  echo "${ARGPATHS[0]}": DOWNLOADED : Average Speed "$OSSPEED" bytes/sec
+  getObject "${ARGPATHS[0]}" "${ARGPATHS[1]}"
 }
 
 # Main function for the put action
@@ -314,14 +313,14 @@ actionPut() {
     local OSLOC="$CONTLOC""$i"
     local ONOS=$(checkExist "$OSLOC")
     if [[ "$ONOS" == 'no' ]]; then
-      local OSSPEED=$(putObject "$OSLOC" "$i")
+      putObject "$OSLOC" "$i"
       echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
     elif [[ "$ONOS" == 'yes' && "$OVERWRITEMODE" == 1 ]]; then
       local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
       if [[ "$SUMMATCH" == "yes" ]]; then
         echo "$i": SKIPPING : md5 sums match, no re-upload necessary
       else
-          local OSSPEED=$(putObject "$OSLOC" "$i")
+          putObject "$OSLOC" "$i")
           echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
       fi
     else
