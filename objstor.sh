@@ -320,7 +320,7 @@ actionPut() {
       if [[ "$SUMMATCH" == "yes" ]]; then
         echo "$i": SKIPPING : md5 sums match, no re-upload necessary
       else
-          putObject "$OSLOC" "$i")
+          putObject "$OSLOC" "$i"
           echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
       fi
     else
