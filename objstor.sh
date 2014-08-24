@@ -310,26 +310,30 @@ actionPut() {
   ARGPATHS=(${ARGPATHS[@]:1})
   for i in ${ARGPATHS[@]}; do
     # need to check local file here and start recursion loop
-    local OSLOC="$CONTLOC""$i"
-    local ONOS=$(checkExist "$OSLOC")
-    if [[ "$ONOS" == 'no' ]]; then
-      putObject "$OSLOC" "$i"
-      echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
-    elif [[ "$ONOS" == 'yes' && "$OVERWRITEMODE" == 1 ]]; then
-      local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
-      if [[ "$SUMMATCH" == "yes" ]]; then
-        echo "$i": SKIPPING : md5 sums match, no re-upload necessary
+    if [[ -e $i ]]; then
+      local OSLOC="$CONTLOC""$i"
+      local ONOS=$(checkExist "$OSLOC")
+      if [[ "$ONOS" == 'no' ]]; then
+        putObject "$OSLOC" "$i"
+        echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
+      elif [[ "$ONOS" == 'yes' && "$OVERWRITEMODE" == 1 ]]; then
+        local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
+        if [[ "$SUMMATCH" == "yes" ]]; then
+          echo "$i": SKIPPING : md5 sums match, no re-upload necessary
+        else
+            putObject "$OSLOC" "$i"
+            echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
+        fi
       else
-          putObject "$OSLOC" "$i"
-          echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
+        local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
+        if [[ "$SUMMATCH" == "yes" ]]; then
+          echo "$i": SKIPPING : refusing to overwrite. Files are identical.
+        else
+          echo "$i": SKIPPING : refusing to overwrite without overwrite flag. Files differ.
+        fi
       fi
     else
-      local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
-      if [[ "$SUMMATCH" == "yes" ]]; then
-        echo "$i": SKIPPING : refusing to overwrite. Files are identical.
-      else
-        echo "$i": SKIPPING : refusing to overwrite without overwrite flag. Files differ.
-      fi
+      true
     fi
   done
 }
