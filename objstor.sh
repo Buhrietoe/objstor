@@ -315,14 +315,12 @@ actionPut() {
       local ONOS=$(checkExist "$OSLOC")
       if [[ "$ONOS" == 'no' ]]; then
         putObject "$OSLOC" "$i"
-        echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
       elif [[ "$ONOS" == 'yes' && "$OVERWRITEMODE" == 1 ]]; then
         local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
         if [[ "$SUMMATCH" == "yes" ]]; then
           echo "$i": SKIPPING : md5 sums match, no re-upload necessary
         else
             putObject "$OSLOC" "$i"
-            echo "$i": UPLOADED : Average Speed "$OSSPEED" bytes/sec
         fi
       else
         local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
