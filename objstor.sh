@@ -330,7 +330,7 @@ actionPut() {
         fi
       fi
     else
-      printError "ERROR: File $i does not exist, skipping"
+      printError "ERROR: $i does not exist, skipping"
     fi
   done
 }
