@@ -309,7 +309,6 @@ actionPut() {
 
   ARGPATHS=(${ARGPATHS[@]:1})
   for i in ${ARGPATHS[@]}; do
-    # need to check local file here and start recursion loop
     if [[ -e $i ]]; then
       local OSLOC="$CONTLOC""$i"
       local ONOS=$(checkExist "$OSLOC")
@@ -331,7 +330,7 @@ actionPut() {
         fi
       fi
     else
-      true
+      printError "ERROR: File $i does not exist, skipping"
     fi
   done
 }
