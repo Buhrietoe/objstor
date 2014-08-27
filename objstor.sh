@@ -291,13 +291,13 @@ actionGet() {
 
 # Main function for the put action
 actionPut() {
+  checkCredentials
   local NUMPATHS=${#ARGPATHS[@]}
 
   if [[ $NUMPATHS < 2 ]]; then
     printError "ERROR: You must specify a target container path and file or directory to upload!" && echo && exit 1
   fi
 
-  checkCredentials
   if [[ ${ARGPATHS[0]:0:1} != "/" ]]; then
     local CONTLOC="/${ARGPATHS[0]}"
   else
