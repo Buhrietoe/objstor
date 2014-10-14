@@ -286,7 +286,32 @@ actionStats() {
 # Main function for the get action
 actionGet() {
   checkCredentials
-  getObject "${ARGPATHS[0]}" "${ARGPATHS[1]}"
+  local NUMPATHS=${#ARGPATHS[@]}
+
+  if [[ $NUMPATHS < 1 ]]; then
+    printError "ERROR: You must specify an object to download!" && echo && exit 1
+  fi
+
+  for i in ${ARGPATHS[@]}; do
+    local ONOS=$(checkExist "$i")
+    local LOCALFILE=$(basename "$i")
+    if [[ "$ONOS" == 'no' ]]; then
+      printError 'ERROR: "$i" does not exist in object storage, skipping'
+    else
+      if [[ -e "$i" ]]; then
+        printError 'ERROR: "$i" exists locally, skipping'
+      elif [[ "$OVERWRITEMODE" == 1 ]]; then
+        local SUMMATCH=$(matchMd5 "$i" "$OSLOC")
+        if [[ "$SUMMATCH" == "yes" ]]; then
+          echo "$i": SKIPPING : md5 sums match, no re-download necessary
+        else
+          getObject "$i" "$LOCALFILE"
+        fi
+      else
+        getObject "$i" "$LOCALFILE"
+      fi
+    fi
+  done
 }
 
 # Main function for the put action
