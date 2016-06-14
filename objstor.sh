@@ -1,7 +1,7 @@
 #!/bin/bash
 # Written by: Jason Gardner
 # https://github.com/Buhrietoe/objstor
-# License: MIT
+# License: MIT - https://opensource.org/licenses/MIT
 # Bash Command line utility for using swift object storage
 # This was written with portability/minimal dependencies in mind and to keep it as simple as possible
 
@@ -23,7 +23,7 @@ usage() {
   echo "$TAB$TAB so they do not need to be specified in later calls of the program."
   echo "$TAB$TAB The ~/.objstor file is a simple bash file that is sourced."
   echo
-  echo "$TAB list - List the contents of the container specified. This will return the"
+  echo "$TAB ls - List the contents of the container specified. This will return the"
   echo "$TAB$TAB containers if none specified. If an object is specified, it's details"
   echo "$TAB$TAB are retrieved."
   echo
@@ -35,7 +35,7 @@ usage() {
   echo "$TAB$TAB first argument and the list of files following that. If an object"
   echo "$TAB$TAB already exists, it will not be overwritten unless -o option is used."
   echo
-  echo "$TAB delete - Delete file(s) in object storage. The path must include the container"
+  echo "$TAB del - Delete file(s) in object storage. The path must include the container"
   echo "$TAB$TAB first. Multiple files may be specified for deletion."
   echo
   echo "Other Notes:"
@@ -46,9 +46,9 @@ usage() {
   echo "$TAB$TAB$(basename $SCRIPTNAME) save -u myusername -k mykey -a 'https://swift.server.url/auth'"
   echo
   echo "$TAB List:"
-  echo "$TAB$TAB$(basename $SCRIPTNAME) list"
-  echo "$TAB$TAB$(basename $SCRIPTNAME) list mycontainer"
-  echo "$TAB$TAB$(basename $SCRIPTNAME) list mycontainer/myobject"
+  echo "$TAB$TAB$(basename $SCRIPTNAME) ls"
+  echo "$TAB$TAB$(basename $SCRIPTNAME) ls mycontainer"
+  echo "$TAB$TAB$(basename $SCRIPTNAME) ls mycontainer/myobject"
   echo
   echo "$TAB Get:"
   echo "$TAB$TAB$(basename $SCRIPTNAME) get mycontainer/myobject"
@@ -57,7 +57,16 @@ usage() {
   echo "$TAB$TAB$(basename $SCRIPTNAME) put mycontainer mylocalfile myotherlocalfile"
   echo
   echo "$TAB Delete:"
-  echo "$TAB$TAB$(basename $SCRIPTNAME) delete mycontainer/myobject mycontainer/myotherobject"
+  echo "$TAB$TAB$(basename $SCRIPTNAME) del mycontainer/myobject mycontainer/myotherobject"
+  echo
+  echo "Return Codes:"
+  echo "$TAB 0 - Success!"
+  echo "$TAB 1 - Undefined error"
+  echo "$TAB $RETCODE_DEPENDENCY - Missing dependency"
+  echo "$TAB $RETCODE_BADARGS - Incorrect arguments passed"
+  echo "$TAB $RETCODE_NOCREDS - Missing credentials"
+  echo "$TAB $RETCODE_BADAUTH - Failed authentication"
+  echo
 }
 
 # Print errors to stderr
@@ -71,43 +80,43 @@ checkDependencies() {
   CMDCURL=$(which curl 2>/dev/null)
   if [ -z "$CMDCURL" ]; then
     printError "curl binary not found in path. It is required."
-    exit 1
+    exit $RETCODE_DEPENDENCY
   fi
 
   CMDMD5SUM=$(which md5sum 2>/dev/null)
   if [ -z "$CMDMD5SUM" ]; then
     printError "md5sum binary not found in path. It is required."
-    exit 1
+    exit $RETCODE_DEPENDENCY
   fi
 
   CMDDD=$(which dd 2>/dev/null)
   if [ -z "$CMDDD" ]; then
     printError "dd binary not found in path. It is required."
-    exit 1
+    exit $RETCODE_DEPENDENCY
   fi
 
   CMDFILE=$(which file 2>/dev/null)
   if [ -z "$CMDFILE" ]; then
     printError "file binary not found in path. It is required."
-    exit 1
+    exit $RETCODE_DEPENDENCY
   fi
 
   CMDGREP=$(which grep 2>/dev/null)
   if [ -z "$CMDFILE" ]; then
     printError "grep binary not found in path. It is required."
-    exit 1
+    exit $RETCODE_DEPENDENCY
   fi
 
   CMDAWK=$(which awk 2>/dev/null)
   if [ -z "$CMDFILE" ]; then
     printError "awk binary not found in path. It is required."
-    exit 1
+    exit $RETCODE_DEPENDENCY
   fi
 
   CMDTR=$(which tr 2>/dev/null)
   if [ -z "$CMDFILE" ]; then
     printError "tr binary not found in path. It is required."
-    exit 1
+    exit $RETCODE_DEPENDENCY
   fi
 }
 
@@ -130,10 +139,10 @@ checkCredentials() {
         if [ "$RETURNRESULT" == 'yes' ]; then
           true
         else
-          printError "ERROR: All credential information not supplied!" && echo && exit 1
+          printError "ERROR: All credential information not supplied!" && echo && exit $RETCODE_NOCREDS
         fi
       else
-        printError "ERROR: Credentials not supplied, and could not read credential file!" && echo && exit 1
+        printError "ERROR: Credentials not supplied, and could not read credential file!" && echo && exit $RETCODE_NOCREDS
       fi
     fi
   fi
@@ -150,21 +159,21 @@ doAuth() {
   AUTHRESULT="$($CMDCURL -s -i -H "X-Auth-User: $APIUSER" -H "X-Auth-Key: $APIKEY" $APIURL)"
   OSCODE=$(parseCode "$AUTHRESULT")
 
-  if [ "$OSCODE" != "200" ]; then
-    printError "Authentication Failed!" && echo "$AUTHRESULT" && exit 1
+  if [[ "$OSCODE" != "200" && "$OSCODE" != "204" ]]; then
+    printError "Authentication Failed!" && echo "$AUTHRESULT" && exit $RETCODE_BADAUTH
   fi
 
   OSURL=$(echo "$AUTHRESULT" | $CMDGREP 'X-Storage-Url' | $CMDTR -d '\r' | $CMDAWK '{print $2}')
-  OSTOKEN=$(echo "$AUTHRESULT" | $CMDGREP 'X-Storage-Token' | $CMDTR -d '\r' | $CMDAWK '{print $2}') 
+  OSTOKEN=$(echo "$AUTHRESULT" | $CMDGREP 'X-Storage-Token' | $CMDTR -d '\r' | $CMDAWK '{print $2}')
 }
 
 # Check if an object exists
 # Parameters: path
 # Returns yes or no if the object exists
 checkExist() {
-  local OBJECTINFO=$(getInfo $1)
+  local OBJECTINFO=$(getInfo "$1")
   local OBJECTCODE=$(parseCode "$OBJECTINFO")
-  if [ "$OBJECTCODE" == "200" ]; then
+  if [[ "$OBJECTCODE" != "200" && "$OBJECTCODE" != "204" ]]; then
     echo yes
   else
     echo no
@@ -229,10 +238,16 @@ getObject() {
   $CMDCURL -H "X-Auth-Token: $OSTOKEN" $OSURL"$1" -o "$2"
 }
 
-# Upload an file
+# Upload a file
 # Parameters: object storage container/path/object, location of local file
 putObject() {
   $CMDCURL -H "X-Auth-Token: $OSTOKEN" $OSURL"$1" -T "$2" -X PUT -o /dev/null
+}
+
+# Upload stream from stdin
+# Parameters: object storage container/path/object
+putObjectStdIn() {
+  $CMDCURL -H "X-Auth-Token: $OSTOKEN" $OSURL"$1" --data-binary - -X PUT -o /dev/null
 }
 
 # Create a directory object
@@ -289,14 +304,17 @@ actionGet() {
   local NUMPATHS=${#ARGPATHS[@]}
 
   if [[ $NUMPATHS < 1 ]]; then
-    printError "ERROR: You must specify an object to download!" && echo && exit 1
+    printError "ERROR: You must specify an object to download!" && echo && exit $RETCODE_BADARGS
   fi
 
   for i in ${ARGPATHS[@]}; do
+    if [[ ${i:0:1} != "/" ]]; then
+      i=/$i
+    fi
     local ONOS=$(checkExist "$i")
     local LOCALFILE=$(basename "$i")
     if [[ "$ONOS" == 'no' ]]; then
-      printError 'ERROR: "$i" does not exist in object storage, skipping'
+      printError "ERROR: '$i' does not exist in object storage, skipping"
     else
       if [[ -e "$i" ]]; then
         printError 'ERROR: "$i" exists locally, skipping'
@@ -320,7 +338,7 @@ actionPut() {
   local NUMPATHS=${#ARGPATHS[@]}
 
   if [[ $NUMPATHS < 2 ]]; then
-    printError "ERROR: You must specify a target container path and file or directory to upload!" && echo && exit 1
+    printError "ERROR: You must specify a target container path and file or directory to upload!" && echo && exit $RETCODE_BADARGS
   fi
 
   if [[ ${ARGPATHS[0]:0:1} != "/" ]]; then
@@ -355,7 +373,7 @@ actionPut() {
         fi
       fi
     else
-      printError "ERROR: $i does not exist, skipping"
+      printError "ERROR: '$i' does not exist, skipping"
     fi
   done
 }
@@ -370,7 +388,7 @@ actionDelete() {
 # Main function for the save action
 actionSave() {
   if [[ -z "$APIUSER" || -z "$APIKEY" || -z "$APIURL" ]]; then
-    printError "ERROR: Missing all credential parameters!" && echo && exit 1
+    printError "ERROR: Missing all credential parameters!" && echo && exit $RETCODE_NOCREDS
   fi
 
   echo "APIUSER='$APIUSER'" > $CREDENTIALFILE
@@ -385,12 +403,12 @@ main() {
   # Perform the action specified
   case $ARGACTION in
     "stats" ) actionStats;;
-    "list" ) actionList;;
+    "ls" ) actionList;;
     "get" ) actionGet;;
     "put" ) actionPut;;
-    "delete" ) actionDelete;;
+    "del" ) actionDelete;;
     "save" ) actionSave;;
-    * ) echo "Invalid Action!" && usage && exit 1
+    * ) echo "Invalid Action!" && usage && exit $RETCODE_BADARGS;;
   esac
 }
 
@@ -402,10 +420,16 @@ SCRIPTNAME=$0
 ARGCOPY="$@"
 CREDENTIALFILE=~/.objstor
 
+# Return Codes
+RETCODE_DEPENDENCY=2
+RETCODE_BADARGS=3
+RETCODE_NOCREDS=4
+RETCODE_BADAUTH=5
+
 # If no arguments given, display usage
 if [ -z "$ARGCOPY" ]; then
   usage
-  exit
+  exit $RETCODE_BADARGS
 fi
 
 # Parse options on command line
@@ -416,7 +440,7 @@ while getopts "u:k:a:o" OPTION; do
     k ) APIKEY="$OPTARG";;
     a ) APIURL="$OPTARG";;
     o ) OVERWRITEMODE="1";;
-    * ) echo "Invalid option!" && usage && exit 1;;
+    * ) echo "Invalid option!" && usage && exit $RETCODE_BADARGS;;
   esac
 done
 shift $(($OPTIND - 1))
